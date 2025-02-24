@@ -1,0 +1,19 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    
+    /* Module System */
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    
+    /* Node.js Compatibility */
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "strict": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}
