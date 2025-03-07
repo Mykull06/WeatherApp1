@@ -1,57 +1,64 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'fs/promises';
+//import path from 'path';
 
-interface City {
-  name: string;
-  id: string;
-}
+const historyFilePath = 'db/db.json';
 
-// ES Module-compatible way to handle __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Initialize the search history file and directory if not existing
+//const initializeSearchHistoryFile = async () => {
+   // try {
+     //   await fs.mkdir(path.dirname(historyFilePath), { recursive: true });
+       // await fs.writeFile(historyFilePath, '[]', { flag: 'wx' });
+    //} catch (error: any) {
+     //   if (error.code !== 'EEXIST') {
+      //      console.error('Error initializing searchHistory.json file:', error);
+        //}
+    //}
+//};
 
-// Correct history file path
-const historyFilePath = path.resolve(__dirname, '../../../db/searchHistory.json');
+// Call the initialization method at service startup
+//initializeSearchHistoryFile();
 
-class HistoryService {
-  private async read(): Promise<City[]> {
-    try {
-      const cities = await fs.promises.readFile(historyFilePath, 'utf8');
-      return JSON.parse(cities) as City[];
-    } catch (error) {
-      console.error('Error loading cities:', error);
-      return [];
+export default {
+    async read() {
+        try {
+            const data = await fs.readFile(historyFilePath, 'utf8');
+            return JSON.parse(data);
+        } catch (error) {
+            console.error('Error loading cities:', error);
+            return [];
+        }
+    },
+
+    async write(data: any) {
+        try {
+            await fs.writeFile(historyFilePath, JSON.stringify(data, null, 2));
+        } catch (error) {
+            console.error('Error saving cities:', error);
+        }
+    },
+
+    async addCity(city: { name: string; id: string }) {
+        const cities = await this.read();
+        cities.push(city);
+        await this.write(cities);
+    },
+
+    async removeCity(id: string) {
+        try {
+            const cities = await this.read();
+            const filteredCities = cities.filter((city: { id: string }) => city.id !== id);
+
+            if (cities.length === filteredCities.length) {
+                console.warn(`City with ID ${id} not found.`);
+                return false;
+            }
+
+            await this.write(filteredCities);
+            console.log(`City with ID ${id} successfully removed.`);
+            return true;
+        } catch (error) {
+            console.error('Error removing city from history:', error);
+            return false;
+        }
     }
-  }
-
-  private async write(cities: City[]): Promise<void> {
-    try {
-      await fs.promises.writeFile(
-        historyFilePath,
-        JSON.stringify(cities, null, 2)
-      );
-    } catch (error) {
-      console.error('Error saving cities:', error);
-    }
-  }
-
-  async getCities(): Promise<City[]> {
-    return this.read();
-  }
-
-  async addCity(city: City): Promise<void> {
-    const cities = await this.read();
-    cities.push(city);
-    await this.write(cities);
-  }
-
-  async removeCity(id: string): Promise<boolean> {
-    const cities = await this.read();
-    const updatedCities = cities.filter(city => city.id !== id);
-    await this.write(updatedCities);
-    return cities.length !== updatedCities.length;
-  }
-}
-
-export default new HistoryService();
+};

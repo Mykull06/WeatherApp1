@@ -9,25 +9,27 @@ router.post('/', async (req: Request, res: Response) => {
   try {
     const { city } = req.body;
 
-    if (!city) {
-      return res.status(400).json({ message: 'City name is required' });
+    if (!city || typeof city !== 'string' || city.trim() === '') {
+      return res.status(400).json({ message: 'City cannot be blank' });
     }
 
-    // Get weather data for the city
-    const weatherData = await WeatherService.getWeatherForCity(city);
+    const trimmedCity = city.trim();
 
-    if (weatherData) {
-      await historyService.addCity({ name: city, id: `${Date.now()}` });
+    console.log(`Fetching weather data for: ${trimmedCity}`);
+    
+    const weatherData = await WeatherService.getWeatherForCity(trimmedCity);
 
-      return res.status(200).json({
-        message: `Weather data for ${city}`,
-        data: weatherData,
-      });
+    if (weatherData && Array.isArray(weatherData)) {
+      await historyService.addCity({ name: trimmedCity, id: `${Date.now()}` });
+      console.log('Weather data from OpenWeather API:', weatherData);
+      return res.status(200).json(weatherData);
     } else {
-      return res.status(404).json({ message: `City ${city} not found` });
+      console.warn(`Weather data for ${trimmedCity} not found.`);
+      return res.status(404).json({ message: `Weather data for ${trimmedCity} not found` });
     }
-  } catch (error) {
-    console.error('Error fetching weather data:', error);
+
+  } catch (error: any) {
+    console.error('Error fetching weather data:', error.message || error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -35,10 +37,11 @@ router.post('/', async (req: Request, res: Response) => {
 // GET request to fetch search history
 router.get('/history', async (_req: Request, res: Response) => {
   try {
-    const cities = await historyService.getCities();
+    const cities = await historyService.read();
+    console.log('Fetched search history:', cities);
     res.status(200).json({ message: 'Search history', data: cities });
-  } catch (error) {
-    console.error('Error fetching search history:', error);
+  } catch (error: any) {
+    console.error('Error fetching search history:', error.message || error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -48,16 +51,22 @@ router.delete('/history/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
+    if (!id) {
+      return res.status(400).json({ message: 'City ID is required' });
+    }
+
     const success = await historyService.removeCity(id);
 
     if (success) {
-      res.status(200).json({ message: `City with id ${id} removed from history` });
+      console.log(`City with ID ${id} removed from history.`);
+      return res.status(200).json({ message: `City with ID ${id} removed from history` });
     } else {
-      res.status(404).json({ message: `City with id ${id} not found` });
+      console.warn(`City with ID ${id} not found in history.`);
+      return res.status(404).json({ message: `City with ID ${id} not found` });
     }
-  } catch (error) {
-    console.error('Error deleting city from search history:', error);
-    res.status(500).json({ message: 'Internal server error' });
+  } catch (error: any) {
+    console.error('Error deleting city from search history:', error.message || error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 });
 
